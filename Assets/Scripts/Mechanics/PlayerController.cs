@@ -4,45 +4,14 @@ using UnityEngine;
 
 namespace Mechanics
 {
-  enum PlayerState
+  public class PlayerController : EntityController
   {
-    IDLE,
-    RUNNING,
-    ATTACKING,
-    JUMPING,
-    FALLING,
-    HURT,
-    DEAD
-  }
-
-  public class PlayerController : MonoBehaviour
-  {
-    public Vector2 velocity;
-    public Health health;
-    public PlayerRenderer playerRenderer;
-
-    Collider2D collider2d;
-    Rigidbody2D body;
-    PlayerState state;
-    Vector3 front;
-
-    public Bounds bounds => collider2d.bounds;
-
-    bool OnAir => state == PlayerState.JUMPING || state == PlayerState.FALLING;
-    bool IsHurt => state == PlayerState.HURT;
-    bool IsAttacking => state == PlayerState.ATTACKING;
-
-    void Awake()
-    {
-      health = GetComponent<Health>();
-      body = GetComponent<Rigidbody2D>();
-      collider2d = GetComponent<Collider2D>();
-    }
+    public float HSpeed;
+    public float JSpeed;
 
     void Start()
     {
-      velocity = Vector2.zero;
-      front = new Vector3(1f, 0f, 0f);
+      SetupState();
 
       Fall();
 
@@ -50,22 +19,12 @@ namespace Mechanics
       health.OnDamage += OnDamage;
     }
 
-    void OnCollisionEnter2D(Collision2D collision)
-    {
-      GroundController ground = collision.gameObject.GetComponent<GroundController>();
-
-      if (ground != null && bounds.center.y >= ground.bounds.max.y)
-      {
-        SetIdle();
-      }
-    }
-
     void Update()
     {
-      if (OnAir && body.velocity.y <= 0f) Fall();
-
       if (Input.anyKey)
       {
+        if (IsGrounded()) SetIdle();
+
         if (!IsAttacking || !IsHurt)
         {
           if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.LeftArrow))
@@ -79,18 +38,16 @@ namespace Mechanics
               TurnLeft();
             }
 
-            body.velocity = new Vector3(front.x * 3f, body.velocity.y, 0f);
+            body.velocity = new Vector3(front.x * HSpeed, body.velocity.y, 0f);
 
-            if (!OnAir) SetRunning();
+            if (IsGrounded()) SetRunning();
           }
 
-          if (!OnAir)
+          if (IsGrounded())
           {
             if (Input.GetKeyDown(KeyCode.Space))
             {
-              body.velocity = new Vector3(body.velocity.x, 3f, 0f);
-
-              Jump();
+              body.velocity = new Vector3(body.velocity.x, JSpeed, 0f);
             }
 
             if (Input.GetKeyDown(KeyCode.C)) Attack();
@@ -99,95 +56,40 @@ namespace Mechanics
       }
       else
       {
-        if (!OnAir) SetIdle();
+        body.velocity = new Vector3(0f, body.velocity.y, 0f);
+
+        if (IsGrounded()) SetIdle();
+      }
+
+      if (!IsGrounded())
+      {
+        if (body.velocity.y <= 0f)
+        {
+          Fall();
+        }
+        else
+        {
+          Jump();
+        }
       }
     }
 
-    public void TurnLeft()
+    void Respawn()
     {
-      front.x = -1f;
+      GameObject spawn = GameObject.Find("SpawnPoint");
 
-      playerRenderer.TurnLeft();
-    }
+      transform.position = spawn.transform.position;
 
-    public void TurnRight()
-    {
-      front.x = 1f;
+      health.Respawn();
 
-      playerRenderer.TurnRight();
-    }
-
-    public void SetHurt()
-    {
-      state = PlayerState.HURT;
-
-      playerRenderer.SetHurt();
-    }
-
-    public void SetRunning()
-    {
-      state = PlayerState.RUNNING;
-
-      playerRenderer.SetRunning();
-    }
-
-    public void SetIdle()
-    {
-      state = PlayerState.IDLE;
-
-      playerRenderer.SetIdle();
-    }
-
-    public void Attack()
-    {
-      state = PlayerState.ATTACKING;
-
-      playerRenderer.Attack();
-    }
-
-    public void Jump()
-    {
-      state = PlayerState.JUMPING;
-
-      playerRenderer.Jump();
-    }
-
-    public void Fall()
-    {
-      state = PlayerState.FALLING;
-
-      playerRenderer.Fall();
-    }
-
-    public void Die()
-    {
-      state = PlayerState.DEAD;
-
-      playerRenderer.Die();
-    }
-
-    public void OnDamage(float amount)
-    {
-      SetHurt();
-
-      body.velocity = (front - transform.up) * -2f;
-    }
-
-    void Deactivate()
-    {
-      gameObject.SetActive(false);
-
-      playerRenderer.OnAnimationEnd -= Deactivate;
+      entityRenderer.OnAnimationEnd -= Respawn;
     }
 
     public void OnDeath()
     {
-      health.OnDeath -= OnDeath;
-      health.OnDamage -= OnDamage;
+      base.OnDeath();
 
-      Die();
-
-      playerRenderer.OnAnimationEnd += Deactivate;
+      entityRenderer.OnAnimationEnd += Respawn;
     }
   }
 }

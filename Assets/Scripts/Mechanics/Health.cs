@@ -22,6 +22,11 @@ public class Health : MonoBehaviour
     currentHealth = maxHealth;
   }
 
+  public void Respawn()
+  {
+    currentHealth = maxHealth;
+  }
+
   public void Heal(float amount)
   {
     currentHealth = Mathf.Max(currentHealth + amount, maxHealth);

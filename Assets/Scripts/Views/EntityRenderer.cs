@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-public class PlayerRenderer : MonoBehaviour
+
+public class EntityRenderer : MonoBehaviour
 {
   public delegate void AnimationEndHandler();
   public event AnimationEndHandler OnAnimationEnd;
@@ -35,6 +36,8 @@ public class PlayerRenderer : MonoBehaviour
     animator.SetBool("hurt", false);
     animator.SetBool("onAir", false);
     animator.SetBool("running", false);
+    animator.SetBool("dead", false);
+    animator.ResetTrigger("fall");
   }
 
   public void Attack()
@@ -45,6 +48,7 @@ public class PlayerRenderer : MonoBehaviour
   public void Jump()
   {
     animator.SetBool("onAir", true);
+    animator.SetBool("running", false);
     animator.SetTrigger("jump");
   }
 
